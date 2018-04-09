@@ -499,3 +499,18 @@ table {
     color: #008080; }
   .highlight .il {
     color: #099; }
+
+.avatar {
+  background-image: url("../assets/images/profile-256.jpeg");
+  background-size: cover;
+  margin-left: auto;
+  margin-right: auto;
+  height: 200px;
+  width: 200px;
+  border: 2px solid white;
+  border-radius: 100px;
+  box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.35); }
+
+.post-card {
+  border: 20px solid white;
+  box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.39); }
