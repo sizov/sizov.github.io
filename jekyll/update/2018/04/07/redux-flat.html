@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.4.0 -->
+<title>Working with flat state in Redux applications | Volodymyr (Vlad) Syzov - blog</title>
+<meta name="generator" content="Jekyll v3.7.3" />
+<meta property="og:title" content="Working with flat state in Redux applications" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
+<meta property="og:description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
+<link rel="canonical" href="https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html" />
+<meta property="og:url" content="https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html" />
+<meta property="og:site_name" content="Volodymyr (Vlad) Syzov - blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2018-04-07T23:19:58+01:00" />
+<script type="application/ld+json">
+{"mainEntityOfPage":{"@type":"WebPage","@id":"https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html"},"description":"In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state.","url":"https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html","@type":"BlogPosting","headline":"Working with flat state in Redux applications","dateModified":"2018-04-07T23:19:58+01:00","datePublished":"2018-04-07T23:19:58+01:00","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://sizov.github.io/feed.xml" title="Volodymyr (Vlad) Syzov - blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Volodymyr (Vlad) Syzov - blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Working with flat state in Redux applications</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2018-04-07T23:19:58+01:00" itemprop="datePublished">Apr 7, 2018
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state.
+Building your application state structure was simple - you would just use multiple models which refer each other.
+Then one model instance can be easily referred by multiple other models and each model can be updated individually
+without affecting the rest of the application state.</p>
+
+<p>In Redux world, sooner or later you will end up with
+a need to flatten your state (<small><em>note: this post will not explain why would you flatten the
+Redux state in a large app - this deserves a separate post</em></small>). Accessing data in flat state
+ might be a very complicated job and naturally, you will start exploring ways to simplify reasoning about application state.
+ This article proposes a way to solve the problem of complexity of accessing entities in Redux flat state.</p>
+
+<p>How does the flat state look? Let’s say, your application manages records of
+drivers and their cars. In pre-Redux world, you would ‘nest’ objects by references, so there would be an ‘intuitive’ and
+‘straightforward’ way to get cars of a driver (<code class="highlighter-rouge">someDriver.cars</code>). Here is how flat state for this app might look like:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
+    <span class="nl">drivers</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'1'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nl">id</span><span class="p">:</span> <span class="s1">'1'</span><span class="p">,</span>
+            <span class="nx">name</span><span class="p">:</span> <span class="s1">'Kevin Potter'</span>
+        <span class="p">},</span>
+        <span class="s1">'2'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nl">id</span><span class="p">:</span> <span class="s1">'2'</span><span class="p">,</span>
+            <span class="nx">name</span><span class="p">:</span> <span class="s1">'Keith Johnson'</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nx">cars</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">'3'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nl">id</span><span class="p">:</span> <span class="s1">'3'</span><span class="p">,</span>
+            <span class="nx">name</span><span class="p">:</span> <span class="s1">'Daewoo Lanos'</span><span class="p">,</span>
+            <span class="nx">driverId</span><span class="p">:</span> <span class="s1">'1'</span>
+        <span class="p">},</span>
+        <span class="s1">'4'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nl">id</span><span class="p">:</span> <span class="s1">'4'</span><span class="p">,</span>
+            <span class="nx">name</span><span class="p">:</span> <span class="s1">'McLaren'</span><span class="p">,</span>
+            <span class="nx">driverId</span><span class="p">:</span> <span class="s1">'2'</span>
+        <span class="p">},</span>
+        <span class="s1">'5'</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nl">id</span><span class="p">:</span> <span class="s1">'5'</span><span class="p">,</span>
+            <span class="nx">name</span><span class="p">:</span> <span class="s1">'Ferrari'</span><span class="p">,</span>
+            <span class="nx">driverId</span><span class="p">:</span> <span class="s1">'2'</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p><small><em>- please note that I deliberately chose to have <code class="highlighter-rouge">Car</code> record referring its <code class="highlighter-rouge">Driver</code> and not to have
+<code class="highlighter-rouge">Driver</code> referring his list of car IDs. More on this choice later as this is not the main goal of this post</em></small></p>
+
+<p>As you see from the above example, flat state is very different -
+you can’t access cars of a certain driver by just drilling down the props of the object, so you can’t do
+something like <code class="highlighter-rouge">driver.cars</code>. Instead, you will need to get cars who’s <code class="highlighter-rouge">driverId</code> matches id of your driver.
+Here’s how this would look like:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">driverId</span> <span class="o">=</span> <span class="s1">'2'</span><span class="p">;</span>
+<span class="kd">const</span> <span class="nx">carsOfDriver</span> <span class="o">=</span> <span class="nb">Object</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">cars</span><span class="p">)</span>
+  <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">carId</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">state</span><span class="p">.</span><span class="nx">cars</span><span class="p">[</span><span class="nx">carId</span><span class="p">])</span>
+  <span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="nx">car</span><span class="p">:</span> <span class="nx">Car</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">car</span><span class="p">.</span><span class="nx">driverId</span> <span class="o">===</span> <span class="nx">driverId</span><span class="p">);</span>
+
+</code></pre></div></div>
+<p><small><em>- please note that all examples are written in TypeScript because I hardly see writing a large-scale application in
+pure JS</em></small></p>
+
+<p>As you see that’s a lot of code to just get cars of the driver, compare this with <code class="highlighter-rouge">someDriver.cars</code> in non-flat state.</p>
+
+<p>Now imagine that you will need this functionality in a lot of places - anywhere where you need to access
+ cars of a driver. It is, of course, reasonable to extract this code into a separate function (selector), let’s
+say you put it in <code class="highlighter-rouge">DriverSelector</code> selector. But as the application grows and amount of flattened state slices grows, you will
+find that you start forgetting which selector to use in which case. Compare this with non-Redux application model
+management - how easy it was to write something like <code class="highlighter-rouge">driver.cars</code>? You
+would not even need to remember how to get cars of the driver - intellisense is always there to help you.</p>
+
+<p>But in our Redux flat state there’s nothing that tells you what selector to use in which case, as there’s no link between
+ your state shape and selectors that you need to use. And the biggest problem of the flat state is that it does not
+ represent a human-readable world which we are used to. Our brains are not trained to think in normalized forms.</p>
+
+<h2 id="introducing-projection">Introducing ‘Projection’</h2>
+
+<p>In Redux application, you wish to just think about <code class="highlighter-rouge">Driver</code> entity and not think how it is stored in the state - that
+parts of it are stored in different state slice (<code class="highlighter-rouge">Cars</code>). Let’s think which API will be suitable to achieve this simplification.
+Ideally, we are trying to get back to <code class="highlighter-rouge">someDriver.cars</code> simplicity from non-flat state world.
+Here’s what we would be happy with:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">carsOfDriver</span> <span class="o">=</span> <span class="nx">driverApi</span><span class="p">.</span><span class="nx">cars</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>If we get <code class="highlighter-rouge">driverApi</code> to indeed represent <code class="highlighter-rouge">Driver</code> entity and hide the ‘flatness’ of the state for us, we should
+be very happy.</p>
+
+<p>Here’s where the pattern <code class="highlighter-rouge">Projection</code> comes in. It takes the idea from the ‘View’ principle of relational db
+   (because flat Redux state is very similar to a relational database). The idea is to create a <code class="highlighter-rouge">View</code> (or <code class="highlighter-rouge">Projection</code>)
+    for your entity and let this view ‘gather’ data from multiple state slices. Then, when you need to access your state,
+     you no longer access it via <code class="highlighter-rouge">state.someProperty</code>, you don’t access the state directly at all.
+     Instead, you always use <code class="highlighter-rouge">Projection</code> which
+     transforms flat, non-readable state into a shape which human brain can easily work with. Here’s how the use of
+     such projection API will look like:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">driver</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">DriverProjection</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="s1">'2'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">carsOfDriver</span> <span class="o">=</span> <span class="nx">driver</span><span class="p">.</span><span class="nx">cars</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>And here’s an implementation of this <code class="highlighter-rouge">Projection</code> pattern:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// private function inside your Projection module</span>
+<span class="kd">function</span> <span class="nx">getCarsForDriver</span><span class="p">(</span><span class="nx">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="nx">driverId</span><span class="p">:</span> <span class="nx">string</span><span class="p">):</span> <span class="nb">Array</span><span class="o">&lt;</span><span class="nx">Car</span><span class="o">&gt;</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nb">Object</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">cars</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="na">id</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">state</span><span class="p">.</span><span class="nx">cars</span><span class="p">[</span><span class="nx">id</span><span class="p">])</span>
+    <span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="na">car</span><span class="p">:</span> <span class="nx">Car</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">car</span><span class="p">.</span><span class="nx">driverId</span> <span class="o">===</span> <span class="nx">driverId</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kd">class</span> <span class="nx">DriverProjection</span> <span class="p">{</span>
+  <span class="kd">constructor</span><span class="p">(</span><span class="kr">private</span> <span class="na">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="kr">private</span> <span class="na">driverId</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="p">{</span>
+  <span class="p">}</span>
+
+  <span class="kd">get</span> <span class="nx">cars</span><span class="p">():</span> <span class="nb">Array</span><span class="o">&lt;</span><span class="nx">Car</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">getCarsForDriver</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span> <span class="nx">driverId</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>As you see, the structure of the state is hidden behind the getter, so developer who uses projection does not need to
+ know the shape of the complex flat state to access data. It is important to understand <code class="highlighter-rouge">Projection</code>’s main benefit
+ compared with selector (because one might say that selector also hides the state structure as well).
+ The difference is that you can hide multiple getters and selectors under one projection and
+    let users of your projection API only think about high-level application entity - <code class="highlighter-rouge">Driver</code> and intellisense will
+     guide the user through possible properties of the entity. So we are going back to non-flat, ‘straightforward’
+     and natural reasoning about application state. This is hardly achievable when having multiple selectors scattered
+     all over your app. <code class="highlighter-rouge">Projection</code> groups selectors for you and hides them under the facade that is easily
+      understood. <code class="highlighter-rouge">Projection</code> almost ‘un-flattens’ your state for you.</p>
+
+<h2 id="memoization">Memoization</h2>
+
+<p>There is one optimization that we can make to Projection. As you see, each invocation of <code class="highlighter-rouge">cars</code> getter will create a new array. We can
+prevent this with memoization. If <code class="highlighter-rouge">state</code> and <code class="highlighter-rouge">driverId</code> don’t change - we should not recalculate the array. You are
+welcome to use any memoization library, here we will stop on <code class="highlighter-rouge">reselect</code> as this is what a lot of people in React-Redux
+community are used to:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="p">{</span> <span class="nx">createSelector</span> <span class="p">}</span> <span class="k">from</span> <span class="s1">'reselect'</span><span class="p">;</span>
+
+<span class="c1">// private function inside your Projection module</span>
+<span class="kd">const</span> <span class="nx">getCarsForDriver</span> <span class="o">=</span> <span class="p">(</span><span class="nx">cars</span><span class="p">:</span> <span class="nx">Cars</span><span class="p">,</span> <span class="nx">driverId</span><span class="p">:</span> <span class="nx">string</span><span class="p">):</span> <span class="nb">Array</span><span class="o">&lt;</span><span class="nx">Car</span><span class="o">&gt;</span> <span class="o">=&gt;</span>
+  <span class="nb">Object</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">cars</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">id</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">cars</span><span class="p">[</span><span class="nx">id</span><span class="p">])</span>
+    <span class="p">.</span><span class="nx">filter</span><span class="p">((</span><span class="nx">car</span><span class="p">:</span> <span class="nx">Car</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">car</span><span class="p">.</span><span class="nx">driverId</span> <span class="o">===</span> <span class="nx">driverId</span><span class="p">);</span>
+
+<span class="kd">class</span> <span class="nx">DriverProjection</span> <span class="p">{</span>
+  <span class="c1">// private instance of memoized selector</span>
+  <span class="kr">private</span> <span class="nx">carsForDriverSelector</span> <span class="o">=</span> <span class="nx">createSelector</span><span class="p">(</span>
+    <span class="nx">state</span> <span class="o">=&gt;</span> <span class="nx">state</span><span class="p">.</span><span class="nx">cars</span><span class="p">,</span>
+    <span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">props</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">props</span><span class="p">.</span><span class="nx">groupId</span><span class="p">,</span>
+    <span class="nx">getCarsForDriver</span>
+  <span class="p">);</span>
+
+  <span class="kd">constructor</span><span class="p">(</span><span class="kr">private</span> <span class="nx">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="kr">private</span> <span class="nx">driverId</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="p">{</span>
+  <span class="p">}</span>
+
+  <span class="kd">get</span> <span class="nx">cars</span><span class="p">():</span> <span class="nb">Array</span><span class="o">&lt;</span><span class="nx">Car</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">carsForDriverSelector</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">,</span> <span class="k">this</span><span class="p">.</span><span class="nx">driverId</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="using-in-react">Using in React</h2>
+
+<p>The great thing about ‘Projection’ approach is that you can also use it in the connected React-Redux components. Here’s
+your <code class="highlighter-rouge">mapStateToProps</code> of the connected component which displays cars of a given driver:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">mapStateToProps</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="nx">props</span><span class="p">:</span> <span class="nx">DriverContainerProps</span><span class="p">):</span> <span class="nx">GroupProps</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kd">const</span> <span class="nx">driver</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">DriverProjection</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">props</span><span class="p">.</span><span class="nx">driverId</span><span class="p">);</span>
+  <span class="k">return</span> <span class="p">{</span>
+    <span class="na">cars</span><span class="p">:</span> <span class="nx">driver</span><span class="p">.</span><span class="nx">cars</span>
+  <span class="p">};</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>As you see, we again don’t need to use selectors at all - we only use <code class="highlighter-rouge">Driver</code> projection.</p>
+
+<p>There’s a final optimization that we can do here - make sure that our projection is not recreated on every store update (
+our memoized selector would not actually work if new projection instance is created every time). For this optimization
+let’s add a method <code class="highlighter-rouge">update</code> to the projection which allows us to update the state and not recreate selectors every
+time:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">class</span> <span class="nx">DriverProjection</span> <span class="p">{</span>
+
+  <span class="c1">//...</span>
+
+  <span class="nx">update</span><span class="p">(</span><span class="nx">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="nx">driverId</span><span class="p">:</span> <span class="nx">string</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">driverId</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">driverId</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="c1">//...</span>
+<span class="p">}</span>
+
+</code></pre></div></div>
+
+<p>And here’s a complete example of how to use it in React:</p>
+
+<div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">makeMapStateToProps</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="nx">props</span><span class="p">:</span> <span class="nx">DriverContainerProps</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="c1">// projection is created once when component is mounted</span>
+  <span class="kd">const</span> <span class="nx">driverProjection</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">DriverProjection</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">props</span><span class="p">.</span><span class="nx">driverId</span><span class="p">);</span>
+  <span class="k">return</span> <span class="p">(</span><span class="na">state</span><span class="p">:</span> <span class="nx">AppState</span><span class="p">,</span> <span class="na">props</span><span class="p">:</span> <span class="nx">DriverContainerProps</span><span class="p">):</span> <span class="nx">GroupProps</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="c1">// here we update the projection with latest state and driverId</span>
+    <span class="nx">driverProjection</span><span class="p">.</span><span class="nx">update</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">props</span><span class="p">.</span><span class="nx">driverId</span><span class="p">);</span>
+    <span class="k">return</span> <span class="p">{</span>
+      <span class="c1">// this 'cars' getter will return same array instance every time</span>
+      <span class="c1">// if arguments for calculating cars didn't change</span>
+      <span class="na">cars</span><span class="p">:</span> <span class="nx">driverProjection</span><span class="p">.</span><span class="nx">cars</span>
+    <span class="p">};</span>
+  <span class="p">};</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="summary">Summary</h2>
+
+<p>One might say that such <code class="highlighter-rouge">Projection</code> approach over-complicates application. It is indeed true for most Redux applications, specifically
+for those which do not use flat state.</p>
+
+<p>But as soon as you try to write a large, scalable React-Redux application, you will face with a problem of reasoning
+about the flat state. Unfortunately, sometimes you might realize the scale of the problem when it’s too late to
+go back and fix things. So please consider this or similar approach if you are writing a large React-Redux application.</p>
+
+<h4 id="some-useful-links">Some useful links:</h4>
+
+<ul>
+  <li>
+    <p><a href="https://redux.js.org/recipes/structuring-reducers/normalizing-state-shape">Intro</a> intro to ‘flatness of the state’ from Redux website</p>
+  </li>
+  <li>
+    <p><a href="https://github.com/reactjs/reselect#createstructuredselectorinputselectors-selectorcreator--createselector">Structured selectors</a>
+from ‘reselect’ library - something that can be used for the same purpose as projections but has its own limitations in my view</p>
+  </li>
+</ul>
+
+  </div><div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function () {
+      this.page.url = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html';
+      this.page.identifier = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html';
+    };
+
+    (function() {
+      var d = document, s = d.createElement('script');
+
+      s.src = 'https://vsyzov.disqus.com/embed.js';
+
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript><a class="u-url" href="/jekyll/update/2018/04/07/redux-flat.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Volodymyr (Vlad) Syzov - blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Volodymyr (Vlad) Syzov - blog</li><li><a class="u-email" href="mailto:vlad@barvi.co.uk">vlad@barvi.co.uk</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/sizov"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">sizov</span></a></li><li><a href="https://www.twitter.com/VladSyzov"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg> <span class="username">VladSyzov</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Thoughts on web development, software architecure and fin-tech.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
