@@ -3,19 +3,19 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.4.0 -->
-<title>Working with flat state in Redux applications | Volodymyr (Vlad) Syzov</title>
+<title>Working with normalized state in Redux applications | Volodymyr (Vlad) Syzov</title>
 <meta name="generator" content="Jekyll v3.7.3" />
-<meta property="og:title" content="Working with flat state in Redux applications" />
+<meta property="og:title" content="Working with normalized state in Redux applications" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
-<meta property="og:description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
-<link rel="canonical" href="https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html" />
-<meta property="og:url" content="https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html" />
+<meta name="description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a normalized application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
+<meta property="og:description" content="In pre-Redux, pre-immutable front-end world there was mostly no need to have a normalized application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state." />
+<link rel="canonical" href="https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html" />
+<meta property="og:url" content="https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html" />
 <meta property="og:site_name" content="Volodymyr (Vlad) Syzov" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2018-04-07T23:19:58+01:00" />
 <script type="application/ld+json">
-{"mainEntityOfPage":{"@type":"WebPage","@id":"https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html"},"description":"In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state.","url":"https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html","@type":"BlogPosting","headline":"Working with flat state in Redux applications","dateModified":"2018-04-07T23:19:58+01:00","datePublished":"2018-04-07T23:19:58+01:00","@context":"http://schema.org"}</script>
+{"mainEntityOfPage":{"@type":"WebPage","@id":"https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html"},"description":"In pre-Redux, pre-immutable front-end world there was mostly no need to have a normalized application state. Building your application state structure was simple - you would just use multiple models which refer each other. Then one model instance can be easily referred by multiple other models and each model can be updated individually without affecting the rest of the application state.","url":"https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html","@type":"BlogPosting","headline":"Working with normalized state in Redux applications","dateModified":"2018-04-07T23:19:58+01:00","datePublished":"2018-04-07T23:19:58+01:00","@context":"http://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://sizov.github.io/feed.xml" title="Volodymyr (Vlad) Syzov" /></head>
 <body><header class="site-header" role="banner">
@@ -40,27 +40,28 @@
         <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">Working with flat state in Redux applications</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Working with normalized state in Redux applications</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2018-04-07T23:19:58+01:00" itemprop="datePublished">Apr 7, 2018
       </time></p>
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>In pre-Redux, pre-immutable front-end world there was mostly no need to have a flat application state.
+    <p>In pre-Redux, pre-immutable front-end world there was mostly no need to have a normalized application state.
 Building your application state structure was simple - you would just use multiple models which refer each other.
 Then one model instance can be easily referred by multiple other models and each model can be updated individually
 without affecting the rest of the application state.</p>
 
 <p>In Redux world, sooner or later you will end up with
-a need to flatten your state (<small><em>note: this post will not explain why would you flatten the
-Redux state in a large app - this deserves a separate post</em></small>). Accessing data in flat state
- might be a very complicated job and naturally, you will start exploring ways to simplify reasoning about application state.
- This article proposes a way to solve the problem of complexity of accessing entities in Redux flat state.</p>
+a need to normalize your state (<small><em>note: this post will not explain why you would normalize the
+Redux state in a large app - this deserves a separate post</em></small>). Accessing entities in a normalized state
+ might be a complicated task to solve because data related to one entity is scattered across multiple state
+ slices. So naturally, you will start exploring ways to simplify the reasoning about application state.
+ This article proposes a way to solve this problem.</p>
 
-<p>How does the flat state look? Let’s say, your application manages records of
+<p>How does the normalized state look? Let’s say, your application manages records of
 drivers and their cars. In pre-Redux world, you would ‘nest’ objects by references, so there would be an ‘intuitive’ and
-‘straightforward’ way to get cars of a driver (<code class="highlighter-rouge">someDriver.cars</code>). Here is how flat state for this app might look like:</p>
+‘straightforward’ way to get cars of a driver (<code class="highlighter-rouge">someDriver.cars</code>). Here is how normalized state for this app might look like:</p>
 
 <div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span>
     <span class="nl">drivers</span><span class="p">:</span> <span class="p">{</span>
@@ -97,7 +98,7 @@ drivers and their cars. In pre-Redux world, you would ‘nest’ objects by refe
 <p><small><em>- please note that I deliberately chose to have <code class="highlighter-rouge">Car</code> record referring its <code class="highlighter-rouge">Driver</code> and not to have
 <code class="highlighter-rouge">Driver</code> referring his list of car IDs. More on this choice later as this is not the main goal of this post</em></small></p>
 
-<p>As you see from the above example, flat state is very different -
+<p>As you see from the above example, normalized state is very different -
 you can’t access cars of a certain driver by just drilling down the props of the object, so you can’t do
 something like <code class="highlighter-rouge">driver.cars</code>. Instead, you will need to get cars who’s <code class="highlighter-rouge">driverId</code> matches id of your driver.
 Here’s how this would look like:</p>
@@ -111,24 +112,24 @@ Here’s how this would look like:</p>
 <p><small><em>- please note that all examples are written in TypeScript because I hardly see writing a large-scale application in
 pure JS</em></small></p>
 
-<p>As you see that’s a lot of code to just get cars of the driver, compare this with <code class="highlighter-rouge">someDriver.cars</code> in non-flat state.</p>
+<p>As you see that’s a lot of code to just get cars of the driver, compare this with <code class="highlighter-rouge">someDriver.cars</code> in non-normalized state.</p>
 
 <p>Now imagine that you will need this functionality in a lot of places - anywhere where you need to access
  cars of a driver. It is, of course, reasonable to extract this code into a separate function (selector), let’s
-say you put it in <code class="highlighter-rouge">DriverSelector</code> selector. But as the application grows and amount of flattened state slices grows, you will
+say you put it in <code class="highlighter-rouge">DriverSelector</code> selector. But as the application grows and amount of normalized state slices grows, you will
 find that you start forgetting which selector to use in which case. Compare this with non-Redux application model
 management - how easy it was to write something like <code class="highlighter-rouge">driver.cars</code>? You
 would not even need to remember how to get cars of the driver - intellisense is always there to help you.</p>
 
 <p>But in our Redux flat state there’s nothing that tells you what selector to use in which case, as there’s no link between
- your state shape and selectors that you need to use. And the biggest problem of the flat state is that it does not
+ your state shape and selectors that you need to use. And the biggest problem of the normalized state is that it does not
  represent a human-readable world which we are used to. Our brains are not trained to think in normalized forms.</p>
 
 <h2 id="introducing-projection">Introducing ‘Projection’</h2>
 
 <p>In Redux application, you wish to just think about <code class="highlighter-rouge">Driver</code> entity and not think how it is stored in the state - that
 parts of it are stored in different state slice (<code class="highlighter-rouge">Cars</code>). Let’s think which API will be suitable to achieve this simplification.
-Ideally, we are trying to get back to <code class="highlighter-rouge">someDriver.cars</code> simplicity from non-flat state world.
+Ideally, we are trying to get back to <code class="highlighter-rouge">someDriver.cars</code> simplicity from non-normalized state world.
 Here’s what we would be happy with:</p>
 
 <div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">carsOfDriver</span> <span class="o">=</span> <span class="nx">driverApi</span><span class="p">.</span><span class="nx">cars</span><span class="p">;</span>
@@ -137,12 +138,12 @@ Here’s what we would be happy with:</p>
 <p>If we get <code class="highlighter-rouge">driverApi</code> to indeed represent <code class="highlighter-rouge">Driver</code> entity and hide the ‘flatness’ of the state for us, we should
 be very happy.</p>
 
-<p>Here’s where the pattern <code class="highlighter-rouge">Projection</code> comes in. It takes the idea from the ‘View’ principle of relational db
-   (because flat Redux state is very similar to a relational database). The idea is to create a <code class="highlighter-rouge">View</code> (or <code class="highlighter-rouge">Projection</code>)
+<p>Here’s where the pattern <code class="highlighter-rouge">Projection</code> comes in. It takes the idea from the <a href="https://en.wikipedia.org/wiki/Object-relational_mapping">ORM</a>
+principles (normalize Redux state is very similar to a relational database). The idea is to create a <code class="highlighter-rouge">View</code> (or <code class="highlighter-rouge">Projection</code>)
     for your entity and let this view ‘gather’ data from multiple state slices. Then, when you need to access your state,
      you no longer access it via <code class="highlighter-rouge">state.someProperty</code>, you don’t access the state directly at all.
      Instead, you always use <code class="highlighter-rouge">Projection</code> which
-     transforms flat, non-readable state into a shape which human brain can easily work with. Here’s how the use of
+     transforms normalized, non-readable state into a shape which human brain can easily work with. Here’s how the use of
      such projection API will look like:</p>
 
 <div class="language-ts highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">driver</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">DriverProjection</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="s1">'2'</span><span class="p">);</span>
@@ -169,14 +170,14 @@ be very happy.</p>
 </code></pre></div></div>
 
 <p>As you see, the structure of the state is hidden behind the getter, so developer who uses projection does not need to
- know the shape of the complex flat state to access data. It is important to understand <code class="highlighter-rouge">Projection</code>’s main benefit
- compared with selector (because one might say that selector also hides the state structure as well).
+ know the shape of the complex normalized state to access data. It is important to understand <code class="highlighter-rouge">Projection</code>’s main benefit
+ compared with selector (because one might say that selector hides the state structure as well).
  The difference is that you can hide multiple getters and selectors under one projection and
     let users of your projection API only think about high-level application entity - <code class="highlighter-rouge">Driver</code> and intellisense will
-     guide the user through possible properties of the entity. So we are going back to non-flat, ‘straightforward’
+     guide the user through possible properties of the entity. So we are going back to non-normalized, ‘straightforward’
      and natural reasoning about application state. This is hardly achievable when having multiple selectors scattered
      all over your app. <code class="highlighter-rouge">Projection</code> groups selectors for you and hides them under the facade that is easily
-      understood. <code class="highlighter-rouge">Projection</code> almost ‘un-flattens’ your state for you.</p>
+      understood. <code class="highlighter-rouge">Projection</code> almost ‘de-normalizes’ your state for you.</p>
 
 <h2 id="memoization">Memoization</h2>
 
@@ -264,17 +265,17 @@ time:</p>
 <h2 id="summary">Summary</h2>
 
 <p>One might say that such <code class="highlighter-rouge">Projection</code> approach over-complicates application. It is indeed true for most Redux applications, specifically
-for those which do not use flat state.</p>
+for those which do not use normalized state.</p>
 
 <p>But as soon as you try to write a large, scalable React-Redux application, you will face with a problem of reasoning
-about the flat state. Unfortunately, sometimes you might realize the scale of the problem when it’s too late to
+about the normalized state. Unfortunately, sometimes you might realize the scale of the problem when it’s too late to
 go back and fix things. So please consider this or similar approach if you are writing a large React-Redux application.</p>
 
 <h4 id="some-useful-links">Some useful links:</h4>
 
 <ul>
   <li>
-    <p><a href="https://redux.js.org/recipes/structuring-reducers/normalizing-state-shape">Intro</a> intro to ‘flatness of the state’ from Redux website</p>
+    <p><a href="https://redux.js.org/recipes/structuring-reducers/normalizing-state-shape">Intro</a> intro to ‘normalized state’ from Redux website</p>
   </li>
   <li>
     <p><a href="https://github.com/reactjs/reselect#createstructuredselectorinputselectors-selectorcreator--createselector">Structured selectors</a>
@@ -285,8 +286,8 @@ from ‘reselect’ library - something that can be used for the same purpose as
   </div><div id="disqus_thread"></div>
   <script>
     var disqus_config = function () {
-      this.page.url = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html';
-      this.page.identifier = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-flat.html';
+      this.page.url = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html';
+      this.page.identifier = 'https://sizov.github.io/jekyll/update/2018/04/07/redux-normalized-state.html';
     };
 
     (function() {
@@ -298,7 +299,7 @@ from ‘reselect’ library - something that can be used for the same purpose as
       (d.head || d.body).appendChild(s);
     })();
   </script>
-  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript><a class="u-url" href="/jekyll/update/2018/04/07/redux-flat.html" hidden></a>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript><a class="u-url" href="/jekyll/update/2018/04/07/redux-normalized-state.html" hidden></a>
 </article>
 
       </div>
