@@ -512,5 +512,6 @@ table {
   box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.35); }
 
 .post-card {
-  border: 20px solid white;
+  box-sizing: border-box;
+  border: 10px solid white;
   box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.39); }
