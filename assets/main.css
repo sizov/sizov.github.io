@@ -515,3 +515,6 @@ table {
   box-sizing: border-box;
   border: 10px solid white;
   box-shadow: 0 0 20px 0px rgba(0, 0, 0, 0.39); }
+
+.margin-bottom {
+  margin-bottom: 30px; }
